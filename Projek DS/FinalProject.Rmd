@@ -1,0 +1,156 @@
+---
+title: "Final Project"
+author: "123210098_123210114"
+date: "2023-12-04"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+```{r}
+#Library Yang digunakan#
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(writexl)
+library(caret)
+library(here)
+library(readxl)
+library(reshape2)
+library(ggplot2)
+library(MASS)
+library(scales)
+```
+
+```{r}
+
+# Membaca dataset
+path <- "C:/Users/LENOVO/OneDrive/Dokumen/praktikumDS2023/Projek DS/JumlahPendudukBerdasarkanPendidikanPerKabBersihFinal.xlsx"
+pendidikan <- read_excel(path) # Menyesuaikan skip jika diperlukan
+
+
+```
+
+#Menampilkan Struktur
+```{r}
+str(pendidikan)
+```
+#Menampilkan dataset
+```{r}
+print(pendidikan)
+```
+#Menampilkan kolom dataset
+```{r}
+names(pendidikan)
+```
+#Mengatur factor
+```{r}
+pendidikan$Gender <- as.factor(pendidikan$Gender)
+# Mengatur Tingkat Pendidikan sebagai faktor berurutan
+pendidikan$`Tingkat Pendidikan` <- factor(pendidikan$`Tingkat Pendidikan`, 
+                                          levels = c("Tidak/Belum Sekolah", "Belum Tamat SD/Sederajat", "Tamat SD/Sederajat", "SLTP/Sederajat", "SLTA/Sederajat", "Diploma I/II", "Akademi/Diploma III/Sarjana Muda", "Diploma IV/Strata I", "Strata II", "Strata III"), 
+                                          ordered = TRUE)
+
+
+```
+
+#Visualisasi
+
+```{r}
+# Visualisasi dengan Diagram Batang skala sumbu y disesuaikan
+ggplot(data_aggregated, aes(x = `Tingkat Pendidikan`, y = Jumlah, fill = Gender)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  scale_y_continuous(labels = scales::comma) +  # Menggunakan label dengan pemisah ribuan
+  theme_minimal() +
+  labs(title = "Distribusi Tingkat Pendidikan berdasarkan Jenis Kelamin",
+       x = "Tingkat Pendidikan",
+       y = "Jumlah (dalam ribuan)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Menambahkan elemen tema untuk memiringkan teks sumbu x
+
+```
+
+#Modelling
+```{r}
+# Mengubah TingkatPendidikan menjadi faktor dengan urutan yang sesuai
+
+set.seed(123)
+training_indices <- sample(1:nrow(data_aggregated), 0.8 * nrow(data_aggregated))
+train_data <- data_aggregated[training_indices, ]
+test_data <- data_aggregated[-training_indices, ]
+
+model <- polr(`Tingkat Pendidikan` ~ Gender, data = train_data, Hess = TRUE, weights = train_data$Jumlah)
+
+model
+
+```
+
+#Evaluasi Model
+```{r}
+pred <- predict(model, newdata = test_data)
+conf_matrix <- table(Predicted = pred, Actual = test_data$`Tingkat Pendidikan`)
+confusionMatrix(conf_matrix)
+
+# Menghitung metrik evaluasi
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+sensitivity <- conf_matrix[2, 2] / sum(conf_matrix[2, ])
+specificity <- conf_matrix[1, 1] / sum(conf_matrix[1, ])
+
+# Menampilkan metrik
+cat("Akurasi:", accuracy, "\nSensitivitas:", sensitivity, "\nSpesifisitas:", specificity, "\n")
+
+# Analisis model
+model_summary <- summary(model)
+model_summary$coefficients
+
+# Menghitung Odd Ratios dari model
+# Menggunakan fungsi exp() pada koefisien untuk mendapatkan Odd Ratios
+odd_ratios <- exp(coef(model))
+odd_ratios_df <- as.data.frame(odd_ratios)
+
+# Menampilkan Odd Ratios
+print("Odd Ratios (pengaruh Gender terhadap Tingkat Pendidikan):")
+print(odd_ratios_df)
+
+# Mungkin juga ingin menampilkan interval kepercayaan untuk Odd Ratios
+confint(model)  # Memerlukan penyesuaian, tergantung pada spesifikasi model Anda
+
+
+
+```
+
+```{r}
+ggplot(data_aggregated, aes(x = `Tingkat Pendidikan`, y = Jumlah, fill = Gender)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_minimal() +
+  labs(title = "Distribusi Tingkat Pendidikan berdasarkan Jenis Kelamin",
+       x = "Tingkat Pendidikan",
+       y = "Jumlah (dalam ribuan)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Menambahkan elemen tema untuk memiringkan teks sumbu x
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
